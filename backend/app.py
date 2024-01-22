@@ -6,6 +6,11 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pizzarestaurant.db'
 db = SQLAlchemy(app)
 
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app) 
+
 # Models
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -31,12 +36,12 @@ def validate_price(target, value, oldvalue, initiator):
         raise ValueError("Price must be between 1 and 30")
 
 # Routes
-@app.route('/restaurants', methods=['GET'])
+@app.route('http://127.0.0.1:5000/restaurants', methods=['GET'])
 def get_restaurants():
     restaurants = Restaurant.query.all()
     return jsonify([{'id': r.id, 'name': r.name, 'address': r.address} for r in restaurants])
 
-@app.route('/restaurants/<int:restaurant_id>', methods=['GET'])
+@app.route('http://127.0.0.1:5000/restaurants/<int:restaurant_id>', methods=['GET'])
 def get_restaurant(restaurant_id):
     restaurant = Restaurant.query.get(restaurant_id)
     if restaurant:
@@ -45,7 +50,7 @@ def get_restaurant(restaurant_id):
     else:
         return jsonify({'error': 'Restaurant not found'}), 404
 
-@app.route('/restaurants/<int:restaurant_id>', methods=['DELETE'])
+@app.route('http://127.0.0.1:5000/restaurants/<int:restaurant_id>', methods=['DELETE'])
 def delete_restaurant(restaurant_id):
     restaurant = Restaurant.query.get(restaurant_id)
     if restaurant:
@@ -57,12 +62,12 @@ def delete_restaurant(restaurant_id):
     else:
         return jsonify({'error': 'Restaurant not found'}), 404
 
-@app.route('/pizzas', methods=['GET'])
+@app.route('http://127.0.0.1:5000/pizzas', methods=['GET'])
 def get_pizzas():
     pizzas = Pizza.query.all()
     return jsonify([{'id': pizza.id, 'name': pizza.name, 'ingredients': pizza.ingredients} for pizza in pizzas])
 
-@app.route('/restaurant_pizzas', methods=['POST'])
+@app.route('http://127.0.0.1:5000/restaurant_pizzas', methods=['POST'])
 def create_restaurant_pizza():
     data = request.get_json()
     try:
