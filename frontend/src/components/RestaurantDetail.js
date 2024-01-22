@@ -1,15 +1,24 @@
-// frontend/src/components/RestaurantDetail.js
+// src/components/RestaurantDetail.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useParams } from 'react-router-dom';
+import axios from '../services/api';
 
-const RestaurantDetail = ({ match }) => {
+const RestaurantDetail = () => {
+  const { id } = useParams();
   const [restaurant, setRestaurant] = useState(null);
 
   useEffect(() => {
-    axios.get(`/restaurants/${match.params.id}`)
-      .then(response => setRestaurant(response.data))
-      .catch(error => console.error('Error fetching restaurant details:', error));
-  }, [match.params.id]);
+    const fetchRestaurant = async () => {
+      try {
+        const response = await axios.get(`/restaurants/${id}`);
+        setRestaurant(response.data);
+      } catch (error) {
+        console.error('Error fetching restaurant:', error);
+      }
+    };
+
+    fetchRestaurant();
+  }, [id]);
 
   if (!restaurant) {
     return <div>Loading...</div>;
@@ -18,10 +27,10 @@ const RestaurantDetail = ({ match }) => {
   return (
     <div>
       <h2>{restaurant.name}</h2>
-      <p>Address: {restaurant.address}</p>
+      <p>{restaurant.address}</p>
       <h3>Pizzas:</h3>
       <ul>
-        {restaurant.pizzas.map(pizza => (
+        {restaurant.pizzas.map((pizza) => (
           <li key={pizza.id}>
             {pizza.name} - {pizza.ingredients}
           </li>

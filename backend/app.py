@@ -1,85 +1,70 @@
-# backend/app.py
-from flask import Flask, request, jsonify
+# app.py
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pizzarestaurant.db'
-db = SQLAlchemy(app)
-
 from flask_cors import CORS
+from models import db, Restaurant, Pizza, RestaurantPizza
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pizzarestaurant.db'
+db.init_app(app)  # Initialize SQLAlchemy with your Flask app
 
-# Models
-class Restaurant(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    address = db.Column(db.String(100), nullable=False)
-    pizzas = db.relationship('Pizza', secondary='restaurant_pizza', backref='restaurants')
+# Create tables
+with app.app_context():
+    db.create_all()
 
-class Pizza(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    ingredients = db.Column(db.String(200), nullable=False)
+# Add a route for the root URL
+@app.route('/')
+def index():
+    return jsonify({'message': 'Welcome to the Pizza Restaurant API'})
 
-class RestaurantPizza(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    price = db.Column(db.Float, nullable=False)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurant.id'), nullable=False)
-    pizza_id = db.Column(db.Integer, db.ForeignKey('pizza.id'), nullable=False)
-
-# Validations
-@db.event.listens_for(RestaurantPizza.price, 'set', retval=True)
-def validate_price(target, value, oldvalue, initiator):
-    if not 1 <= value <= 30:
-        raise ValueError("Price must be between 1 and 30")
-
-# Routes
-@app.route('http://127.0.0.1:5000/restaurants', methods=['GET'])
+@app.route('/restaurants', methods=['GET'])
 def get_restaurants():
     restaurants = Restaurant.query.all()
-    return jsonify([{'id': r.id, 'name': r.name, 'address': r.address} for r in restaurants])
+    return jsonify([{'id': restaurant.id, 'name': restaurant.name, 'address': restaurant.address} for restaurant in restaurants])
 
-@app.route('http://127.0.0.1:5000/restaurants/<int:restaurant_id>', methods=['GET'])
+@app.route('/restaurants/<int:restaurant_id>', methods=['GET'])
 def get_restaurant(restaurant_id):
-    restaurant = Restaurant.query.get(restaurant_id)
-    if restaurant:
-        pizzas = [{'id': pizza.id, 'name': pizza.name, 'ingredients': pizza.ingredients} for pizza in restaurant.pizzas]
-        return jsonify({'id': restaurant.id, 'name': restaurant.name, 'address': restaurant.address, 'pizzas': pizzas})
-    else:
-        return jsonify({'error': 'Restaurant not found'}), 404
+    restaurant = Restaurant.query.get_or_404(restaurant_id)
+    pizzas = [{'id': pizza.id, 'name': pizza.name, 'ingredients': pizza.ingredients} for pizza in restaurant.pizzas]
+    return jsonify({'id': restaurant.id, 'name': restaurant.name, 'address': restaurant.address, 'pizzas': pizzas})
 
-@app.route('http://127.0.0.1:5000/restaurants/<int:restaurant_id>', methods=['DELETE'])
+@app.route('/restaurants/<int:restaurant_id>', methods=['DELETE'])
 def delete_restaurant(restaurant_id):
-    restaurant = Restaurant.query.get(restaurant_id)
-    if restaurant:
-        # Delete associated RestaurantPizzas first
-        RestaurantPizza.query.filter_by(restaurant_id=restaurant.id).delete()
-        db.session.delete(restaurant)
-        db.session.commit()
-        return '', 204
-    else:
-        return jsonify({'error': 'Restaurant not found'}), 404
+    restaurant = Restaurant.query.get_or_404(restaurant_id)
+    
+    # Delete associated RestaurantPizzas
+    RestaurantPizza.query.filter_by(restaurant_id=restaurant.id).delete()
 
-@app.route('http://127.0.0.1:5000/pizzas', methods=['GET'])
+    # Delete the restaurant
+    db.session.delete(restaurant)
+    db.session.commit()
+
+    return jsonify({'message': 'Restaurant deleted successfully'})
+
+@app.route('/pizzas', methods=['GET'])
 def get_pizzas():
     pizzas = Pizza.query.all()
     return jsonify([{'id': pizza.id, 'name': pizza.name, 'ingredients': pizza.ingredients} for pizza in pizzas])
 
-@app.route('http://127.0.0.1:5000/restaurant_pizzas', methods=['POST'])
+@app.route('/restaurant_pizzas', methods=['POST'])
 def create_restaurant_pizza():
     data = request.get_json()
-    try:
-        restaurant_pizza = RestaurantPizza(price=data['price'], pizza_id=data['pizza_id'], restaurant_id=data['restaurant_id'])
-        db.session.add(restaurant_pizza)
-        db.session.commit()
-        pizza = Pizza.query.get(data['pizza_id'])
-        return jsonify({'id': pizza.id, 'name': pizza.name, 'ingredients': pizza.ingredients})
-    except Exception as e:
-        return jsonify({'errors': ['validation errors']}), 400
+
+    restaurant_id = data.get('restaurant_id')
+    pizza_id = data.get('pizza_id')
+    price = data.get('price')
+
+    # Check if the restaurant and pizza exist
+    restaurant = Restaurant.query.get_or_404(restaurant_id)
+    pizza = Pizza.query.get_or_404(pizza_id)
+
+    # Create a new RestaurantPizza
+    restaurant_pizza = RestaurantPizza(restaurant_id=restaurant.id, pizza_id=pizza.id, price=price)
+    db.session.add(restaurant_pizza)
+    db.session.commit()
+
+    return jsonify({'message': 'RestaurantPizza created successfully'})
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

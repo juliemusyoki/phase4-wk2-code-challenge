@@ -1,67 +1,60 @@
-// frontend/src/components/RestaurantPizzaForm.js
+// src/components/RestaurantPizzaForm.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../services/api';
 
-const RestaurantPizzaForm = () => {
-  const [formData, setFormData] = useState({
-    price: '',
-    pizza_id: '',
-    restaurant_id: '',
-  });
-
+const RestaurantPizzaForm = ({ restaurantId }) => {
+  const [price, setPrice] = useState(0);
+  const [pizzaId, setPizzaId] = useState('');
   const [pizzas, setPizzas] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
 
   useEffect(() => {
-    // Fetch pizzas and restaurants for dropdowns
-    axios.get('/pizzas')
-      .then(response => setPizzas(response.data))
-      .catch(error => console.error('Error fetching pizzas:', error));
+    const fetchPizzas = async () => {
+      try {
+        const response = await axios.get('/pizzas');
+        setPizzas(response.data);
+      } catch (error) {
+        console.error('Error fetching pizzas:', error);
+      }
+    };
 
-    axios.get('/restaurants')
-      .then(response => setRestaurants(response.data))
-      .catch(error => console.error('Error fetching restaurants:', error));
+    fetchPizzas();
   }, []);
 
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    axios.post('/restaurant_pizzas', formData)
-      .then(response => console.log('RestaurantPizza created successfully:', response.data))
-      .catch(error => console.error('Error creating RestaurantPizza:', error));
+    try {
+      await axios.post('/restaurant_pizzas', { price, pizza_id: pizzaId, restaurant_id: restaurantId });
+      // Handle success, maybe update state or show a message
+      console.log('RestaurantPizza created successfully!');
+    } catch (error) {
+      console.error('Error creating RestaurantPizza:', error);
+      // Handle error, show an error message
+    }
   };
 
   return (
     <div>
-      <h1>Create Restaurant Pizza</h1>
+      <h2>Create Restaurant Pizza</h2>
       <form onSubmit={handleSubmit}>
         <label>
           Price:
-          <input type="number" name="price" value={formData.price} onChange={handleInputChange} />
+          <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
         </label>
         <label>
           Pizza:
-          <select name="pizza_id" value={formData.pizza_id} onChange={handleInputChange}>
-            <option value="">Select Pizza</option>
-            {pizzas.map(pizza => (
-              <option key={pizza.id} value={pizza.id}>{pizza.name}</option>
+          <select value={pizzaId} onChange={(e) => setPizzaId(e.target.value)}>
+            <option value="" disabled>
+              Select Pizza
+            </option>
+            {pizzas.map((pizza) => (
+              <option key={pizza.id} value={pizza.id}>
+                {pizza.name}
+              </option>
             ))}
           </select>
         </label>
-        <label>
-          Restaurant:
-          <select name="restaurant_id" value={formData.restaurant_id} onChange={handleInputChange}>
-            <option value="">Select Restaurant</option>
-            {restaurants.map(restaurant => (
-              <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
-            ))}
-          </select>
-        </label>
-        <button type="submit">Create Restaurant Pizza</button>
+        <button type="submit">Create</button>
       </form>
     </div>
   );

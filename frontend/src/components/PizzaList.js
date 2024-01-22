@@ -1,23 +1,30 @@
-// frontend/src/components/PizzaList.js
+// src/components/PizzaList.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../services/api';
 
 const PizzaList = () => {
   const [pizzas, setPizzas] = useState([]);
 
   useEffect(() => {
-    axios.get('/pizzas')
-      .then(response => setPizzas(response.data))
-      .catch(error => console.error('Error fetching pizzas:', error));
+    const fetchPizzas = async () => {
+      try {
+        const response = await axios.get('/pizzas');
+        setPizzas(response.data);
+      } catch (error) {
+        console.error('Error fetching pizzas:', error);
+      }
+    };
+
+    fetchPizzas();
   }, []);
 
   return (
     <div>
-      <h1>Pizza List</h1>
+      <h2>Pizza List</h2>
       <ul>
-        {pizzas.map(pizza => (
+        {pizzas.map((pizza) => (
           <li key={pizza.id}>
-            <strong>{pizza.name}</strong> - {pizza.ingredients}
+            {pizza.name} - {pizza.ingredients}
           </li>
         ))}
       </ul>
